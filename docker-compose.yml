@@ -1,9 +1,17 @@
----
-version: '2'
+version: '3'
+networks:
+  nethost0:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.25.105.0/24
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:6.1.0
     container_name: zookeeper
+    networks:
+      - nethost0
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME: 2000
@@ -32,6 +40,8 @@ services:
     # "`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-'"`-._,-
     #
       - 9092:9092
+    networks:
+      - nethost0
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -47,6 +57,8 @@ services:
   schema-registry:
     image: confluentinc/cp-schema-registry:6.1.0
     container_name: schema-registry
+    networks:
+      - nethost0
     ports: 
       - 8081:8081
     depends_on:
@@ -65,6 +77,8 @@ services:
       - schema-registry
     ports:
       - 8083:8083
+    networks:
+      - nethost0
     environment:
       CONNECT_BOOTSTRAP_SERVERS: "broker:29092"
       CONNECT_REST_PORT: 8083
@@ -111,6 +125,8 @@ services:
       - kafka-connect
     ports:
       - "8088:8088"
+    networks:
+      - nethost0
     environment:
       KSQL_LISTENERS: http://0.0.0.0:8088
       KSQL_BOOTSTRAP_SERVERS: broker:29092
@@ -128,6 +144,8 @@ services:
     # *-----------------------------*
     image: postgres:12
     container_name: postgres
+    networks:
+      - nethost0
     environment:
      - POSTGRES_USER=postgres
      - POSTGRES_PASSWORD=postgres
@@ -135,6 +153,8 @@ services:
   kafkacat:
     image: edenhill/kafkacat:1.6.0
     container_name: kafkacat
+    networks:
+      - nethost0
     links:
       - broker
       - schema-registry
@@ -144,3 +164,20 @@ services:
       - |
         apk add jq; 
         while [ 1 -eq 1 ];do sleep 60;done
+
+  monitor:
+    image: provectuslabs/kafka-ui
+    container_name: monitor-kafka
+    networks:
+      - nethost0
+    ports:
+      - "8080:8080"
+    depends_on:
+      - zookeeper
+      - broker
+    environment:
+      KAFKA_CLUSTERS_0_NAME: kafka
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: broker:9092
+      KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: kafka-connect
+      KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
