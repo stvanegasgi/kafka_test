@@ -181,3 +181,14 @@ services:
       KAFKA_CLUSTERS_0_SCHEMAREGISTRY: http://schema-registry:8081
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_NAME: kafka-connect
       KAFKA_CLUSTERS_0_KAFKACONNECT_0_ADDRESS: http://kafka-connect:8083
+
+  solr:
+    image: "solr:9.5"
+    ports:
+      - "8983:8983"
+    volumes:
+      - $PWD/data_solr:/var/solr
+    networks:
+      - nethost0
+    environment:
+      - SOLR_HEAP=2g
