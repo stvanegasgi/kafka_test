@@ -1,6 +1,7 @@
 import requests
 import os
 import shutil
+import json
 
 # =============================================================================
 # ============================== functions ====================================
@@ -28,12 +29,12 @@ def get_version_connector(url_kafka_connect):
     else:
         return None
 
-def create_config_struc_connector(name_connector,
-                                  name_topic,
-                                  input_path,
-                                  output_path,
-                                  error_path):
-    return {
+def create_config_struct_connector(name_connector,
+                                   name_topic,
+                                   input_path,
+                                   output_path,
+                                   error_path):
+    return json.dumps({
         "name": f"{name_connector}",
         "config": {
             "connector.class": "com.github.jcustenborder.kafka.connect.spooldir.SpoolDirCsvSourceConnector",
@@ -45,7 +46,7 @@ def create_config_struc_connector(name_connector,
             "schema.generation.enabled":"true",
             "csv.first.row.as.header":"true"
         }
-    }
+    })
 
 def create_connector(url_kafka_connect, data):
     url_create_connectors = url_kafka_connect + "connectors"
@@ -53,8 +54,8 @@ def create_connector(url_kafka_connect, data):
                                               headers={"Content-Type":"application/json"},
                                               data=data)
 
-    print("response_create_connector ", url_create_connectors)
-    print("response_create_connector ", url_create_connectors.json())
+    print("response_create_connector ", response_create_connector)
+    print("response_create_connector ", response_create_connector.json())
 
     if (response_create_connector.status_code in [200, 201]):
         return response_create_connector.json()
@@ -65,8 +66,8 @@ def transfer_files_kafka_directories(list_path_files_origin, list_path_files_des
     if (len(list_path_files_origin) != len(list_path_files_destination)):
         return None
     try:
-        for index_i, path_i in enumerate(list_path_files):
-            shutil.copy2(path_i, list_path_files_destination)
+        for index_i, path_i in enumerate(list_path_files_origin):
+            shutil.copy2(path_i, list_path_files_destination[index_i])
         return True
     except Exception as e:
         print(f"--> error in transfer files to kafka --> '{e}'")
@@ -98,7 +99,7 @@ order_files = ['file_00.csv',
                'file_01.csv',
                'file_02.csv',
                'file_03.csv',
-               'file_04.csv'
+               'file_04.csv',
                'file_05.csv']
 
 url_kafka_connect = "http://localhost:8083/"
@@ -131,10 +132,21 @@ response_version_connect = get_version_connector(url_kafka_connect)
 
 print("\nVersion connector --> ", response_version_connect)
 
-struc_config = create_config_struc_connector(connector_name,
-                                             topic_name,
-                                             input_path_kafka,
-                                             output_path_kafka,
-                                             error_path_kafka)
+struct_config_connector = create_config_struct_connector(connector_name,
+                                                         topic_name,
+                                                         input_path_kafka,
+                                                         output_path_kafka,
+                                                         error_path_kafka)
 
-print("input_path --> ", struc_config)
+print("struct_config_connector --> ", struct_config_connector)
+
+
+list_files_origin       = [origin_files_path + file_i for file_i in order_files]
+list_files_destination  = [data_volume_host + "/unprocessed/" + file_i for file_i in order_files]
+response_transfer_files = transfer_files_kafka_directories(list_files_origin, list_files_destination)
+
+print("response_transfer_files ", response_transfer_files)
+
+if (response_transfer_files):
+    response_create_connector = create_connector(url_kafka_connect, struct_config_connector)
+    print("response_create_connector ", response_create_connector)
