@@ -116,6 +116,7 @@ services:
         sleep infinity
     volumes:
       - $PWD/data:/data
+      - $PWD/kafka-connect-solr:/usr/share/java/kafka-connect-solr
 
   ksqldb:
     image: confluentinc/ksqldb-server:0.15.0
