@@ -48,6 +48,19 @@ def create_config_struct_connector(name_connector,
         }
     })
 
+def create_config_struct_sink_connector_solr(name_connector,
+                                             name_topic,
+                                             base_url_solr):
+    return json.dumps({
+        "name": f"{name_connector}",
+        "config": {
+            "connector.class" : "com.github.jcustenborder.kafka.connect.solr.HttpSolrSinkConnector",
+            "tasks.max" : "1",
+            "topics": f"{name_topic}",
+            "solr.url" : f"{base_url_solr}"
+        }
+    })
+
 def create_connector(url_kafka_connect, data):
     url_create_connectors = url_kafka_connect + "connectors"
     response_create_connector = requests.post(url=url_create_connectors,
@@ -103,9 +116,11 @@ order_files = ['file_00.csv',
                'file_05.csv']
 
 url_kafka_connect = "http://localhost:8083/"
+url_solr          = "http://127.0.0.1:8983/"
 
-connector_name = "CONNECTOR_00"
-topic_name     = "TOPIC_00"
+connector_name      = "CONNECTOR_00"
+topic_name          = "TOPIC_00"
+sink_connector_name = "SINK_CONNECTOR_00"
 
 input_path_kafka  = data_volume_kafka_path + "unprocessed"
 output_path_kafka = data_volume_kafka_path + "processed"
@@ -117,6 +132,7 @@ error_path_host   = data_volume_host + "error"
 # =============================================================================
 # ============================== create the kafka folders =====================
 # =============================================================================
+
 
 names_directories = ["unprocessed", "processed", "error"]
 
@@ -147,6 +163,17 @@ response_transfer_files = transfer_files_kafka_directories(list_files_origin, li
 
 print("response_transfer_files ", response_transfer_files)
 
-if (response_transfer_files):
+
+if (True):
+
     response_create_connector = create_connector(url_kafka_connect, struct_config_connector)
     print("response_create_connector ", response_create_connector)
+
+    struct_config_sink_connector_solr = create_config_struct_sink_connector_solr(sink_connector_name,
+                                                                                 topic_name,
+                                                                                 url_solr)
+
+    print("struct_config_sink_connector_solr", struct_config_sink_connector_solr)
+
+    response_create_sink_connector = create_connector(url_kafka_connect, struct_config_sink_connector_solr)
+    print("response_create_sink_connector ", response_create_sink_connector)
